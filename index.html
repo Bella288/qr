@@ -1,1 +1,487 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QR Code Generator & Scanner</title>
+    <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #6a11cb 0%, #2575fc 100%);
+            color: #333;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+        
+        .container {
+            width: 100%;
+            max-width: 800px;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            overflow: hidden;
+            margin: 20px 0;
+        }
+        
+        header {
+            background: #4a00e0;
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+        
+        h1 {
+            font-size: 2.2rem;
+            margin-bottom: 10px;
+        }
+        
+        .description {
+            font-size: 1rem;
+            opacity: 0.9;
+        }
+        
+        .tabs {
+            display: flex;
+            background: #f1f1f1;
+        }
+        
+        .tab {
+            flex: 1;
+            padding: 15px;
+            text-align: center;
+            background: #e9e9e9;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 600;
+        }
+        
+        .tab.active {
+            background: white;
+            color: #4a00e0;
+            border-bottom: 3px solid #4a00e0;
+        }
+        
+        .tab-content {
+            display: none;
+            padding: 25px;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        .input-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #444;
+        }
+        
+        input, textarea, select {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border 0.3s;
+        }
+        
+        input:focus, textarea:focus, select:focus {
+            border-color: #4a00e0;
+            outline: none;
+        }
+        
+        textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+        
+        button {
+            background: #4a00e0;
+            color: white;
+            border: none;
+            padding: 14px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            width: 100%;
+            transition: background 0.3s;
+        }
+        
+        button:hover {
+            background: #3575fc;
+        }
+        
+        .qr-result {
+            text-align: center;
+            margin-top: 25px;
+            padding: 15px;
+            border-radius: 8px;
+            background: #f9f9f9;
+        }
+        
+        #qrcode {
+            margin: 15px auto;
+            padding: 10px;
+            background: white;
+            border-radius: 8px;
+            display: inline-block;
+        }
+        
+        .scanner-container {
+            position: relative;
+            width: 100%;
+            max-width: 500px;
+            margin: 0 auto;
+        }
+        
+        #scan-area {
+            width: 100%;
+            border-radius: 8px;
+            overflow: hidden;
+            position: relative;
+        }
+        
+        #scan-video {
+            width: 100%;
+            background: #333;
+            border-radius: 8px;
+        }
+        
+        .scan-box {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 70%;
+            height: 200px;
+            border: 3px solid #4a00e0;
+            border-radius: 8px;
+            box-shadow: 0 0 0 4000px rgba(0, 0, 0, 0.3);
+        }
+        
+        .scan-result {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f9f9f9;
+            border-radius: 8px;
+        }
+        
+        .download-btn {
+            background: #00c853;
+            margin-top: 15px;
+        }
+        
+        .download-btn:hover {
+            background: #009624;
+        }
+        
+        .footer {
+            margin-top: 20px;
+            text-align: center;
+            color: white;
+            font-size: 0.9rem;
+        }
+        
+        @media (max-width: 600px) {
+            .container {
+                border-radius: 10px;
+            }
+            
+            h1 {
+                font-size: 1.8rem;
+            }
+            
+            .tab {
+                padding: 12px;
+                font-size: 14px;
+            }
+            
+            .tab-content {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>QR Code Generator & Scanner</h1>
+            <p class="description">Create and scan QR codes for various content types</p>
+        </header>
+        
+        <div class="tabs">
+            <div class="tab active" data-tab="generator">QR Generator</div>
+            <div class="tab" data-tab="scanner">QR Scanner</div>
+        </div>
+        
+        <div class="tab-content active" id="generator">
+            <div class="input-group">
+                <label for="content-type">Content Type</label>
+                <select id="content-type">
+                    <option value="text">Text</option>
+                    <option value="url">URL</option>
+                    <option value="phone">Phone Number</option>
+                    <option value="email">Email</option>
+                    <option value="contact">Contact Details (vCard)</option>
+                </select>
+            </div>
+            
+            <div id="text-input" class="input-group">
+                <label for="text-content">Text Content</label>
+                <textarea id="text-content" placeholder="Enter text to encode"></textarea>
+            </div>
+            
+            <div id="url-input" class="input-group" style="display: none;">
+                <label for="url-content">Website URL</label>
+                <input type="url" id="url-content" placeholder="https://example.com">
+            </div>
+            
+            <div id="phone-input" class="input-group" style="display: none;">
+                <label for="phone-content">Phone Number</label>
+                <input type="tel" id="phone-content" placeholder="+1234567890">
+            </div>
+            
+            <div id="email-input" class="input-group" style="display: none;">
+                <label for="email-content">Email Address</label>
+                <input type="email" id="email-content" placeholder="example@mail.com">
+            </div>
+            
+            <div id="contact-input" class="input-group" style="display: none;">
+                <label for="name-content">Full Name</label>
+                <input type="text" id="name-content" placeholder="John Doe">
+                
+                <label for="contact-phone">Phone Number</label>
+                <input type="tel" id="contact-phone" placeholder="+1234567890">
+                
+                <label for="contact-email">Email Address</label>
+                <input type="email" id="contact-email" placeholder="john.doe@example.com">
+                
+                <label for="contact-address">Address</label>
+                <input type="text" id="contact-address" placeholder="123 Main St, City, Country">
+            </div>
+            
+            <button id="generate-btn">Generate QR Code</button>
+            
+            <div class="qr-result">
+                <h3>Your QR Code</h3>
+                <div id="qrcode"></div>
+                <button id="download-btn" class="download-btn">Download QR Code</button>
+            </div>
+        </div>
+        
+        <div class="tab-content" id="scanner">
+            <div class="scanner-container">
+                <div id="scan-area">
+                    <video id="scan-video" width="100%" height="300"></video>
+                    <div class="scan-box"></div>
+                </div>
+                <button id="start-scan">Start Scanner</button>
+                <button id="stop-scan" style="display: none;">Stop Scanner</button>
+            </div>
+            
+            <div class="scan-result">
+                <h3>Scan Result</h3>
+                <div id="scan-output">No QR code detected yet...</div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="footer">
+        <p>QR Code Generator & Scanner App | Created with HTML, CSS & JavaScript</p>
+    </div>
 
+    <script>
+        // Tab switching functionality
+        document.querySelectorAll('.tab').forEach(tab => {
+            tab.addEventListener('click', () => {
+                // Remove active class from all tabs and content
+                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                
+                // Add active class to clicked tab and corresponding content
+                tab.classList.add('active');
+                document.getElementById(tab.dataset.tab).classList.add('active');
+            });
+        });
+        
+        // Content type switching for generator
+        const contentType = document.getElementById('content-type');
+        const textInput = document.getElementById('text-input');
+        const urlInput = document.getElementById('url-input');
+        const phoneInput = document.getElementById('phone-input');
+        const emailInput = document.getElementById('email-input');
+        const contactInput = document.getElementById('contact-input');
+        
+        contentType.addEventListener('change', () => {
+            // Hide all input groups
+            textInput.style.display = 'none';
+            urlInput.style.display = 'none';
+            phoneInput.style.display = 'none';
+            emailInput.style.display = 'none';
+            contactInput.style.display = 'none';
+            
+            // Show selected input group
+            switch(contentType.value) {
+                case 'text':
+                    textInput.style.display = 'block';
+                    break;
+                case 'url':
+                    urlInput.style.display = 'block';
+                    break;
+                case 'phone':
+                    phoneInput.style.display = 'block';
+                    break;
+                case 'email':
+                    emailInput.style.display = 'block';
+                    break;
+                case 'contact':
+                    contactInput.style.display = 'block';
+                    break;
+            }
+        });
+        
+        // QR Code Generation
+        const generateBtn = document.getElementById('generate-btn');
+        const qrcodeDiv = document.getElementById('qrcode');
+        const downloadBtn = document.getElementById('download-btn');
+        
+        generateBtn.addEventListener('click', () => {
+            let qrData = '';
+            
+            switch(contentType.value) {
+                case 'text':
+                    qrData = document.getElementById('text-content').value;
+                    break;
+                case 'url':
+                    let url = document.getElementById('url-content').value;
+                    qrData = url.startsWith('http') ? url : 'https://' + url;
+                    break;
+                case 'phone':
+                    qrData = 'tel:' + document.getElementById('phone-content').value;
+                    break;
+                case 'email':
+                    qrData = 'mailto:' + document.getElementById('email-content').value;
+                    break;
+                case 'contact':
+                    const name = document.getElementById('name-content').value;
+                    const phone = document.getElementById('contact-phone').value;
+                    const email = document.getElementById('contact-email').value;
+                    const address = document.getElementById('contact-address').value;
+                    
+                    qrData = `BEGIN:VCARD
+VERSION:3.0
+N:${name}
+TEL:${phone}
+EMAIL:${email}
+ADR:${address}
+END:VCARD`;
+                    break;
+            }
+            
+            if (qrData) {
+                // Clear previous QR code
+                qrcodeDiv.innerHTML = '';
+                
+                // Generate new QR code
+                QRCode.toCanvas(qrcodeDiv, qrData, {
+                    width: 200,
+                    margin: 1,
+                    color: {
+                        dark: '#000000',
+                        light: '#ffffff'
+                    }
+                }, function(error) {
+                    if (error) console.error(error);
+                });
+            } else {
+                alert('Please enter content to generate QR code');
+            }
+        });
+        
+        downloadBtn.addEventListener('click', () => {
+            const canvas = qrcodeDiv.querySelector('canvas');
+            if (canvas) {
+                const link = document.createElement('a');
+                link.download = 'qrcode.png';
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+            }
+        });
+        
+        // QR Code Scanning
+        const startScanBtn = document.getElementById('start-scan');
+        const stopScanBtn = document.getElementById('stop-scan');
+        const scanVideo = document.getElementById('scan-video');
+        const scanOutput = document.getElementById('scan-output');
+        
+        let stream = null;
+        let scanningInterval = null;
+        
+        startScanBtn.addEventListener('click', async () => {
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { facingMode: "environment" } 
+                });
+                scanVideo.srcObject = stream;
+                startScanBtn.style.display = 'none';
+                stopScanBtn.style.display = 'block';
+                
+                // Start scanning for QR codes
+                scanningInterval = setInterval(() => {
+                    if (scanVideo.readyState === scanVideo.HAVE_ENOUGH_DATA) {
+                        const canvas = document.createElement('canvas');
+                        canvas.width = scanVideo.videoWidth;
+                        canvas.height = scanVideo.videoHeight;
+                        const context = canvas.getContext('2d');
+                        context.drawImage(scanVideo, 0, 0, canvas.width, canvas.height);
+                        
+                        const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
+                        const code = jsQR(imageData.data, imageData.width, imageData.height);
+                        
+                        if (code) {
+                            scanOutput.innerHTML = `
+                                <p><strong>QR Code Detected:</strong></p>
+                                <p>${code.data}</p>
+                            `;
+                        }
+                    }
+                }, 500);
+            } catch (err) {
+                console.error('Error accessing camera:', err);
+                alert('Unable to access camera. Please check permissions.');
+            }
+        });
+        
+        stopScanBtn.addEventListener('click', () => {
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+                stream = null;
+            }
+            if (scanningInterval) {
+                clearInterval(scanningInterval);
+                scanningInterval = null;
+            }
+            startScanBtn.style.display = 'block';
+            stopScanBtn.style.display = 'none';
+            scanOutput.textContent = 'No QR code detected yet...';
+        });
+    </script>
+</body>
+</html>
