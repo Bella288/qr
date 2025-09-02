@@ -437,25 +437,60 @@
     </div>
 
     <script>
+        // URL Routing functionality
+        function updateUrlForTab(tabName) {
+            const path = tabName === 'generator' ? '/gen' : '/scan';
+            // Use history API to update URL without page reload
+            window.history.pushState(null, null, path);
+        }
+        
+        function getTabFromUrl() {
+            const path = window.location.pathname;
+            if (path === '/scan') return 'scanner';
+            return 'generator'; // Default to generator
+        }
+        
+        // Initialize tab based on URL
+        function initializeTabFromUrl() {
+            const targetTab = getTabFromUrl();
+            switchTab(targetTab);
+        }
+        
+        // Switch to a specific tab
+        function switchTab(tabName) {
+            // Remove active class from all tabs and content
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            
+            // Add active class to target tab and corresponding content
+            document.querySelector(`.tab[data-tab="${tabName}"]`).classList.add('active');
+            document.getElementById(tabName).classList.add('active');
+            
+            // Update URL
+            updateUrlForTab(tabName);
+            
+            // If switching to scanner, stop any active generator processes
+            if (tabName === 'scanner') {
+                if (stream) {
+                    stopScanner();
+                }
+            }
+        }
+        
         // Tab switching functionality
         document.querySelectorAll('.tab').forEach(tab => {
             tab.addEventListener('click', () => {
-                // Remove active class from all tabs and content
-                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-                
-                // Add active class to clicked tab and corresponding content
-                tab.classList.add('active');
-                document.getElementById(tab.dataset.tab).classList.add('active');
-                
-                // If switching to scanner, stop any active generator processes
-                if (tab.dataset.tab === 'scanner') {
-                    if (stream) {
-                        stopScanner();
-                    }
-                }
+                switchTab(tab.dataset.tab);
             });
         });
+        
+        // Handle browser back/forward buttons
+        window.addEventListener('popstate', () => {
+            initializeTabFromUrl();
+        });
+        
+        // Initialize on page load
+        initializeTabFromUrl();
         
         // Content type switching for generator
         const contentType = document.getElementById('content-type');
