@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QR Code Generator & Scanner</title>
     <link rel="icon" type="image/png" href="/assets/icons/favicon-96x96.png" sizes="96x96" />
     <link rel="icon" type="image/svg+xml" href="/assets/icons/favicon.svg" />
     <link rel="shortcut icon" href="/assets/icons/favicon.ico" />
     <link rel="apple-touch-icon" sizes="180x180" href="/assets/icons/apple-touch-icon.png" />
     <meta name="apple-mobile-web-app-title" content="GenScan" />
     <link rel="manifest" href="/assets/icons/site.webmanifest" />
-    <title>QR Code Generator & Scanner</title>
     <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.1/build/qrcode.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
     <style>
@@ -128,6 +128,7 @@
             font-weight: 600;
             width: 100%;
             transition: background 0.3s;
+            margin-top: 10px;
         }
         
         button:hover {
@@ -232,6 +233,26 @@
             background: #f9f9f9;
             border-radius: 8px;
             margin-bottom: 20px;
+        }
+        
+        .upload-section {
+            margin: 20px 0;
+            text-align: center;
+        }
+        
+        .upload-btn {
+            background: #ff9800;
+        }
+        
+        .upload-btn:hover {
+            background: #f57c00;
+        }
+        
+        .upload-preview {
+            max-width: 100%;
+            margin-top: 15px;
+            border-radius: 8px;
+            display: none;
         }
         
         @media (max-width: 600px) {
@@ -395,9 +416,18 @@
                 <button id="stop-scan" style="display: none;">Stop Scanner</button>
             </div>
             
+            <div class="upload-section">
+                <h3>Or upload an image</h3>
+                <input type="file" id="upload-qr" accept="image/*" style="display: none;">
+                <button id="upload-btn" class="upload-btn">Upload QR Code Image</button>
+                <img id="upload-preview" class="upload-preview" alt="QR Code Preview">
+            </div>
+            
             <div class="scan-result">
                 <h3>Scan Result</h3>
                 <div id="scan-output">No QR code detected yet...</div>
+                <button id="save-contact" style="display: none; background: #00c853;">Save Contact</button>
+                <button id="open-url" style="display: none; background: #2196f3;">Open URL</button>
             </div>
         </div>
     </div>
@@ -506,23 +536,23 @@
                         return;
                     }
                     
-                    // Build vCard content
+                    // Build vCard content with proper formatting
                     qrData = `BEGIN:VCARD
 VERSION:3.0
 N:${name}
 FN:${name}
-TEL;TYPE=HOME,VOICE:${personalPhone}
-EMAIL;TYPE=PERSONAL:${personalEmail}`;
+TEL;TYPE=CELL,VOICE:${personalPhone}
+EMAIL:${personalEmail}`;
 
                     // Add optional personal address fields if provided
                     if (street || city || state || zip || country) {
-                        qrData += `\nADR;TYPE=HOME:;;${street};${city};${state};${zip};${country}`;
+                        qrData += `\nADR:;;${street};${city};${state};${zip};${country}`;
+                        qrData += `\nLABEL:${street}, ${city}, ${state} ${zip}, ${country}`;
                     }
                     
                     // Add work details if provided
                     if (company) qrData += `\nORG:${company}`;
-                    if (department) qrData += `\nTITLE:${department}`;
-                    if (position) qrData += `\nROLE:${position}`;
+                    if (position) qrData += `\nTITLE:${position}`;
                     if (workPhone) qrData += `\nTEL;TYPE=WORK,VOICE:${workPhone}`;
                     if (workAddress) qrData += `\nADR;TYPE=WORK:;;${workAddress};;;`;
                     
@@ -582,9 +612,15 @@ EMAIL;TYPE=PERSONAL:${personalEmail}`;
         const stopScanBtn = document.getElementById('stop-scan');
         const scanVideo = document.getElementById('scan-video');
         const scanOutput = document.getElementById('scan-output');
+        const uploadBtn = document.getElementById('upload-btn');
+        const uploadInput = document.getElementById('upload-qr');
+        const uploadPreview = document.getElementById('upload-preview');
+        const saveContactBtn = document.getElementById('save-contact');
+        const openUrlBtn = document.getElementById('open-url');
         
         let stream = null;
         let scanningInterval = null;
+        let lastScannedData = '';
         
         // Function to stop the scanner
         function stopScanner() {
@@ -639,13 +675,10 @@ EMAIL;TYPE=PERSONAL:${personalEmail}`;
                             });
                             
                             if (code) {
-                                scanOutput.innerHTML = `
-                                    <p><strong>QR Code Detected:</strong></p>
-                                    <p>${code.data}</p>
-                                `;
+                                processScannedData(code.data);
                             }
                         }
-                    }, 100); // Check every 100ms instead of 500ms to improve responsiveness
+                    }, 100); // Check every 100ms
                 };
             } catch (err) {
                 console.error('Error accessing camera:', err);
@@ -653,8 +686,136 @@ EMAIL;TYPE=PERSONAL:${personalEmail}`;
             }
         }
         
+        // Function to process scanned data
+        function processScannedData(data) {
+            lastScannedData = data;
+            
+            // Check if it's a vCard
+            if (data.startsWith('BEGIN:VCARD')) {
+                scanOutput.innerHTML = `
+                    <p><strong>Contact Detected:</strong></p>
+                    <p>${extractContactInfo(data)}</p>
+                `;
+                saveContactBtn.style.display = 'block';
+                openUrlBtn.style.display = 'none';
+            } 
+            // Check if it's a URL
+            else if (data.startsWith('http://') || data.startsWith('https://') || 
+                     data.startsWith('www.') || data.startsWith('mailto:') || 
+                     data.startsWith('tel:')) {
+                scanOutput.innerHTML = `
+                    <p><strong>Link Detected:</strong></p>
+                    <p><a href="${data}" target="_blank">${data}</a></p>
+                `;
+                saveContactBtn.style.display = 'none';
+                openUrlBtn.style.display = 'block';
+            } 
+            // Regular text
+            else {
+                scanOutput.innerHTML = `
+                    <p><strong>Text Detected:</strong></p>
+                    <p>${data}</p>
+                `;
+                saveContactBtn.style.display = 'none';
+                openUrlBtn.style.display = 'none';
+            }
+        }
+        
+        // Function to extract contact info from vCard
+        function extractContactInfo(vcard) {
+            const lines = vcard.split('\n');
+            let name = '';
+            let phone = '';
+            let email = '';
+            
+            for (const line of lines) {
+                if (line.startsWith('FN:') || line.startsWith('N:')) {
+                    name = line.split(':')[1] || '';
+                } else if (line.startsWith('TEL')) {
+                    phone = line.split(':')[1] || '';
+                } else if (line.startsWith('EMAIL')) {
+                    email = line.split(':')[1] || '';
+                }
+            }
+            
+            return `Name: ${name}<br>Phone: ${phone}<br>Email: ${email}`;
+        }
+        
+        // Function to save contact from vCard
+        function saveContactFromVCard(vcard) {
+            // Create a blob with the vCard data
+            const blob = new Blob([vcard], { type: 'text/vcard' });
+            const url = URL.createObjectURL(blob);
+            
+            // Create a download link
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = 'contact.vcf';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+        
+        // Upload QR code image functionality
+        uploadBtn.addEventListener('click', () => {
+            uploadInput.click();
+        });
+        
+        uploadInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    uploadPreview.src = event.target.result;
+                    uploadPreview.style.display = 'block';
+                    
+                    // Create an image element to process
+                    const img = new Image();
+                    img.onload = function() {
+                        // Create a canvas to draw the image
+                        const canvas = document.createElement('canvas');
+                        const ctx = canvas.getContext('2d');
+                        canvas.width = img.width;
+                        canvas.height = img.height;
+                        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                        
+                        // Get image data
+                        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                        
+                        // Try to detect QR code
+                        const code = jsQR(imageData.data, imageData.width, imageData.height, {
+                            inversionAttempts: "dontInvert",
+                        });
+                        
+                        if (code) {
+                            processScannedData(code.data);
+                        } else {
+                            scanOutput.innerHTML = '<p>No QR code found in the image.</p>';
+                            saveContactBtn.style.display = 'none';
+                            openUrlBtn.style.display = 'none';
+                        }
+                    };
+                    img.src = event.target.result;
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+        
+        // Button event listeners
         startScanBtn.addEventListener('click', startScanner);
         stopScanBtn.addEventListener('click', stopScanner);
+        
+        saveContactBtn.addEventListener('click', () => {
+            if (lastScannedData.startsWith('BEGIN:VCARD')) {
+                saveContactFromVCard(lastScannedData);
+            }
+        });
+        
+        openUrlBtn.addEventListener('click', () => {
+            if (lastScannedData) {
+                window.open(lastScannedData, '_blank');
+            }
+        });
     </script>
 </body>
 </html>
