@@ -694,7 +694,7 @@ EMAIL:${personalEmail}`;
             if (data.startsWith('BEGIN:VCARD')) {
                 scanOutput.innerHTML = `
                     <p><strong>Contact Detected:</strong></p>
-                    <p>${extractContactInfo(data)}</p>
+                    <div class="contact-details">${extractContactInfo(data)}</div>
                 `;
                 saveContactBtn.style.display = 'block';
                 openUrlBtn.style.display = 'none';
@@ -724,21 +724,38 @@ EMAIL:${personalEmail}`;
         // Function to extract contact info from vCard
         function extractContactInfo(vcard) {
             const lines = vcard.split('\n');
-            let name = '';
-            let phone = '';
-            let email = '';
+            let contactInfo = '';
             
             for (const line of lines) {
                 if (line.startsWith('FN:') || line.startsWith('N:')) {
-                    name = line.split(':')[1] || '';
+                    const name = line.split(':')[1] || '';
+                    if (name) contactInfo += `<p><strong>Name:</strong> ${name}</p>`;
                 } else if (line.startsWith('TEL')) {
-                    phone = line.split(':')[1] || '';
+                    const phone = line.split(':')[1] || '';
+                    if (phone) contactInfo += `<p><strong>Phone:</strong> ${phone}</p>`;
                 } else if (line.startsWith('EMAIL')) {
-                    email = line.split(':')[1] || '';
+                    const email = line.split(':')[1] || '';
+                    if (email) contactInfo += `<p><strong>Email:</strong> ${email}</p>`;
+                } else if (line.startsWith('ADR')) {
+                    const address = line.split(':')[1] || '';
+                    if (address && !address.startsWith(';;')) {
+                        // Format address by replacing semicolons with commas
+                        const formattedAddress = address.split(';').filter(part => part).join(', ');
+                        contactInfo += `<p><strong>Address:</strong> ${formattedAddress}</p>`;
+                    }
+                } else if (line.startsWith('ORG:')) {
+                    const company = line.split(':')[1] || '';
+                    if (company) contactInfo += `<p><strong>Company:</strong> ${company}</p>`;
+                } else if (line.startsWith('TITLE:')) {
+                    const title = line.split(':')[1] || '';
+                    if (title) contactInfo += `<p><strong>Title:</strong> ${title}</p>`;
+                } else if (line.startsWith('NOTE:')) {
+                    const note = line.split(':')[1] || '';
+                    if (note) contactInfo += `<p><strong>Note:</strong> ${note}</p>`;
                 }
             }
             
-            return `Name: ${name}<br>Phone: ${phone}<br>Email: ${email}`;
+            return contactInfo || '<p>No contact information found</p>';
         }
         
         // Function to save contact from vCard
