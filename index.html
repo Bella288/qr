@@ -26,7 +26,7 @@
         
         .container {
             width: 100%;
-            max-width: 800px;
+            max-width: 900px;
             background: white;
             border-radius: 15px;
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
@@ -162,6 +162,7 @@
             width: 100%;
             background: #333;
             border-radius: 8px;
+            min-height: 300px;
         }
         
         .scan-box {
@@ -197,6 +198,26 @@
             text-align: center;
             color: white;
             font-size: 0.9rem;
+        }
+        
+        .contact-section {
+            background: #f0f4ff;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        
+        .contact-section h3 {
+            margin-bottom: 15px;
+            color: #4a00e0;
+            border-bottom: 2px solid #4a00e0;
+            padding-bottom: 8px;
+        }
+        
+        .optional {
+            color: #777;
+            font-style: italic;
+            font-weight: normal;
         }
         
         @media (max-width: 600px) {
@@ -263,18 +284,77 @@
                 <input type="email" id="email-content" placeholder="example@mail.com">
             </div>
             
-            <div id="contact-input" class="input-group" style="display: none;">
-                <label for="name-content">Full Name</label>
-                <input type="text" id="name-content" placeholder="John Doe">
+            <div id="contact-input" style="display: none;">
+                <div class="contact-section">
+                    <h3>Personal Details</h3>
+                    <div class="input-group">
+                        <label for="name-content">Full Name <span class="optional">(Required)</span></label>
+                        <input type="text" id="name-content" placeholder="John Doe" required>
+                    </div>
+                    
+                    <div class="input-group">
+                        <label for="personal-phone">Personal Phone <span class="optional">(Required)</span></label>
+                        <input type="tel" id="personal-phone" placeholder="+1234567890" required>
+                    </div>
+                    
+                    <div class="input-group">
+                        <label for="personal-email">Personal Email <span class="optional">(Required)</span></label>
+                        <input type="email" id="personal-email" placeholder="john.doe@example.com" required>
+                    </div>
+                    
+                    <div class="input-group">
+                        <label for="address-street">Street Address <span class="optional">(Optional)</span></label>
+                        <input type="text" id="address-street" placeholder="123 Main St">
+                    </div>
+                    
+                    <div class="input-group">
+                        <label for="address-city">City <span class="optional">(Optional)</span></label>
+                        <input type="text" id="address-city" placeholder="New York">
+                    </div>
+                    
+                    <div class="input-group">
+                        <label for="address-state">State/Province <span class="optional">(Optional)</span></label>
+                        <input type="text" id="address-state" placeholder="NY">
+                    </div>
+                    
+                    <div class="input-group">
+                        <label for="address-zip">ZIP/Postal Code <span class="optional">(Optional)</span></label>
+                        <input type="text" id="address-zip" placeholder="10001">
+                    </div>
+                    
+                    <div class="input-group">
+                        <label for="address-country">Country <span class="optional">(Optional)</span></label>
+                        <input type="text" id="address-country" placeholder="USA">
+                    </div>
+                </div>
                 
-                <label for="contact-phone">Phone Number</label>
-                <input type="tel" id="contact-phone" placeholder="+1234567890">
-                
-                <label for="contact-email">Email Address</label>
-                <input type="email" id="contact-email" placeholder="john.doe@example.com">
-                
-                <label for="contact-address">Address</label>
-                <input type="text" id="contact-address" placeholder="123 Main St, City, Country">
+                <div class="contact-section">
+                    <h3>Work Details <span class="optional">(Optional)</span></h3>
+                    <div class="input-group">
+                        <label for="company">Company</label>
+                        <input type="text" id="company" placeholder="ABC Corporation">
+                    </div>
+                    
+                    <div class="input-group">
+                        <label for="position">Position</label>
+                        <input type="text" id="position" placeholder="Software Developer">
+                    </div>
+                    
+                    <div class="input-group">
+                        <label for="department">Department</label>
+                        <input type="text" id="department" placeholder="Engineering">
+                    </div>
+                    
+                    <div class="input-group">
+                        <label for="work-phone">Work Phone</label>
+                        <input type="tel" id="work-phone" placeholder="+1234567890">
+                    </div>
+                    
+                    <div class="input-group">
+                        <label for="work-address">Work Address</label>
+                        <input type="text" id="work-address" placeholder="456 Business Ave">
+                    </div>
+                </div>
             </div>
             
             <button id="generate-btn">Generate QR Code</button>
@@ -318,6 +398,18 @@
                 // Add active class to clicked tab and corresponding content
                 tab.classList.add('active');
                 document.getElementById(tab.dataset.tab).classList.add('active');
+                
+                // If switching to scanner, stop any active generator processes
+                if (tab.dataset.tab === 'scanner') {
+                    if (stream) {
+                        stream.getTracks().forEach(track => track.stop());
+                        stream = null;
+                    }
+                    if (scanningInterval) {
+                        clearInterval(scanningInterval);
+                        scanningInterval = null;
+                    }
+                }
             });
         });
         
@@ -381,17 +473,46 @@
                     break;
                 case 'contact':
                     const name = document.getElementById('name-content').value;
-                    const phone = document.getElementById('contact-phone').value;
-                    const email = document.getElementById('contact-email').value;
-                    const address = document.getElementById('contact-address').value;
+                    const personalPhone = document.getElementById('personal-phone').value;
+                    const personalEmail = document.getElementById('personal-email').value;
+                    const street = document.getElementById('address-street').value;
+                    const city = document.getElementById('address-city').value;
+                    const state = document.getElementById('address-state').value;
+                    const zip = document.getElementById('address-zip').value;
+                    const country = document.getElementById('address-country').value;
+                    const company = document.getElementById('company').value;
+                    const position = document.getElementById('position').value;
+                    const department = document.getElementById('department').value;
+                    const workPhone = document.getElementById('work-phone').value;
+                    const workAddress = document.getElementById('work-address').value;
                     
+                    // Validate required fields
+                    if (!name || !personalPhone || !personalEmail) {
+                        alert('Please fill in all required contact fields: Name, Personal Phone, and Personal Email');
+                        return;
+                    }
+                    
+                    // Build vCard content
                     qrData = `BEGIN:VCARD
 VERSION:3.0
 N:${name}
-TEL:${phone}
-EMAIL:${email}
-ADR:${address}
-END:VCARD`;
+FN:${name}
+TEL;TYPE=HOME,VOICE:${personalPhone}
+EMAIL;TYPE=PERSONAL:${personalEmail}`;
+
+                    // Add optional personal address fields if provided
+                    if (street || city || state || zip || country) {
+                        qrData += `\nADR;TYPE=HOME:;;${street};${city};${state};${zip};${country}`;
+                    }
+                    
+                    // Add work details if provided
+                    if (company) qrData += `\nORG:${company}`;
+                    if (department) qrData += `\nTITLE:${department}`;
+                    if (position) qrData += `\nROLE:${position}`;
+                    if (workPhone) qrData += `\nTEL;TYPE=WORK,VOICE:${workPhone}`;
+                    if (workAddress) qrData += `\nADR;TYPE=WORK:;;${workAddress};;;`;
+                    
+                    qrData += '\nEND:VCARD';
                     break;
             }
             
@@ -400,16 +521,24 @@ END:VCARD`;
                 qrcodeDiv.innerHTML = '';
                 
                 // Generate new QR code
-                QRCode.toCanvas(qrcodeDiv, qrData, {
-                    width: 200,
-                    margin: 1,
-                    color: {
-                        dark: '#000000',
-                        light: '#ffffff'
-                    }
-                }, function(error) {
-                    if (error) console.error(error);
-                });
+                try {
+                    QRCode.toCanvas(qrcodeDiv, qrData, {
+                        width: 200,
+                        margin: 1,
+                        color: {
+                            dark: '#000000',
+                            light: '#ffffff'
+                        }
+                    }, function(error) {
+                        if (error) {
+                            console.error('QR Code generation error:', error);
+                            alert('Error generating QR code: ' + error.message);
+                        }
+                    });
+                } catch (error) {
+                    console.error('QR Code generation error:', error);
+                    alert('Error generating QR code: ' + error.message);
+                }
             } else {
                 alert('Please enter content to generate QR code');
             }
@@ -422,6 +551,8 @@ END:VCARD`;
                 link.download = 'qrcode.png';
                 link.href = canvas.toDataURL('image/png');
                 link.click();
+            } else {
+                alert('Please generate a QR code first');
             }
         });
         
