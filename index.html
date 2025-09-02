@@ -294,6 +294,8 @@
                     <option value="text">Text</option>
                     <option value="url">URL</option>
                     <option value="phone">Phone Number</option>
+                    <option value="wifi">WiFi Network</option>
+                    <option value="event">Calendar Event</option>
                     <option value="email">Email</option>
                     <option value="contact">Contact Details (vCard)</option>
                 </select>
@@ -315,10 +317,89 @@
             </div>
             
             <div id="email-input" class="input-group" style="display: none;">
-                <label for="email-content">Email Address</label>
-                <input type="email" id="email-content" placeholder="example@mail.com">
+                <div class="contact-section">
+                    <h3>Email Details</h3>
+                    <div class="input-group">
+                        <label for="email-to">Recipient Email <span class="optional">(Required)</span></label>
+                        <input type="email" id="email-to" placeholder="recipient@example.com" required>
+                    </div>
+                    
+                    <div class="input-group">
+                        <label for="email-replyto">Reply-To Email <span class="optional">(Optional)</span></label>
+                        <input type="email" id="email-replyto" placeholder="reply@example.com">
+                    </div>
+                    
+                    <div class="input-group">
+                        <label for="email-subject">Subject <span class="optional">(Optional)</span></label>
+                        <input type="text" id="email-subject" placeholder="Email Subject">
+                    </div>
+                    
+                    <div class="input-group">
+                        <label for="email-body">Message Body <span class="optional">(Optional)</span></label>
+                        <textarea id="email-body" placeholder="Your message here"></textarea>
+                    </div>
+                </div>
             </div>
-            
+            <div id="wifi-input" class="input-group" style="display: none;">
+                <div class="contact-section">
+                    <h3>WiFi Network Details</h3>
+                    <div class="input-group">
+                        <label for="wifi-ssid">Network Name (SSID) <span class="optional">(Required)</span></label>
+                        <input type="text" id="wifi-ssid" placeholder="MyWiFiNetwork" required>
+                    </div>
+                    
+                    <div class="input-group">
+                        <label for="wifi-password">Password <span class="optional">(Required)</span></label>
+                        <input type="password" id="wifi-password" placeholder="Network Password" required>
+                    </div>
+                    
+                    <div class="input-group">
+                        <label for="wifi-type">Authentication Type <span class="optional">(Required)</span></label>
+                        <select id="wifi-type">
+                            <option value="nopass">None (Open Network)</option>
+                            <option value="WEP">WEP</option>
+                            <option value="WPA" selected>WPA/WPA2</option>
+                        </select>
+                    </div>
+                    
+                    <div class="input-group">
+                        <label for="wifi-hidden">Hidden Network <span class="optional">(Optional)</span></label>
+                        <select id="wifi-hidden">
+                            <option value="false">No</option>
+                            <option value="true">Yes</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+                <div id="event-input" class="input-group" style="display: none;">
+                    <div class="contact-section">
+                        <h3>Event Details</h3>
+                        <div class="input-group">
+                            <label for="event-title">Event Title <span class="optional">(Required)</span></label>
+                            <input type="text" id="event-title" placeholder="Meeting/Conference/Party" required>
+                        </div>
+                        
+                        <div class="input-group">
+                            <label for="event-description">Description <span class="optional">(Optional)</span></label>
+                            <textarea id="event-description" placeholder="Event details"></textarea>
+                        </div>
+                        
+                        <div class="input-group">
+                            <label for="event-location">Location <span class="optional">(Optional)</span></label>
+                            <input type="text" id="event-location" placeholder="Venue or Address">
+                        </div>
+                        
+                        <div class="input-group">
+                            <label for="event-start">Start Date & Time <span class="optional">(Required)</span></label>
+                            <input type="datetime-local" id="event-start" required>
+                        </div>
+                        
+                        <div class="input-group">
+                            <label for="event-end">End Date & Time <span class="optional">(Optional)</span></label>
+                            <input type="datetime-local" id="event-end">
+                        </div>
+                    </div>
+                </div>
             <div id="contact-input" style="display: none;">
                 <div class="contact-section">
                     <h3>Personal Details</h3>
@@ -437,6 +518,8 @@
     </div>
 
     <script>
+        const wifiInput = document.getElementById('wifi-input');
+        const eventInput = document.getElementById('event-input');
         // URL Routing functionality
         function updateUrlForTab(tabName) {
             const path = tabName === 'generator' ? '/gen' : '/scan';
@@ -506,6 +589,8 @@
             urlInput.style.display = 'none';
             phoneInput.style.display = 'none';
             emailInput.style.display = 'none';
+            wifiInput.style.display = 'none';
+            eventInput.style.display = 'none';
             contactInput.style.display = 'none';
             
             // Show selected input group
@@ -521,6 +606,12 @@
                     break;
                 case 'email':
                     emailInput.style.display = 'block';
+                    break;
+                case 'wifi':
+                    wifiInput.style.display = 'block';
+                    break;
+                case 'event':
+                    eventInput.style.display = 'block';
                     break;
                 case 'contact':
                     contactInput.style.display = 'block';
@@ -548,7 +639,77 @@
                     qrData = 'tel:' + document.getElementById('phone-content').value;
                     break;
                 case 'email':
-                    qrData = 'mailto:' + document.getElementById('email-content').value;
+                    const emailTo = document.getElementById('email-to').value;
+                    const emailReplyTo = document.getElementById('email-replyto').value;
+                    const emailSubject = document.getElementById('email-subject').value;
+                    const emailBody = document.getElementById('email-body').value;
+                    
+                    if (!emailTo) {
+                        alert('Please enter a recipient email address');
+                        return;
+                    }
+                    
+                    qrData = 'mailto:' + encodeURIComponent(emailTo);
+                    
+                    // Add optional parameters
+                    const params = [];
+                    if (emailReplyTo) params.push('reply-to=' + encodeURIComponent(emailReplyTo));
+                    if (emailSubject) params.push('subject=' + encodeURIComponent(emailSubject));
+                    if (emailBody) params.push('body=' + encodeURIComponent(emailBody));
+                    
+                    if (params.length > 0) {
+                        qrData += '?' + params.join('&');
+                    }
+                    break;
+                case 'wifi':
+                    const ssid = document.getElementById('wifi-ssid').value;
+                    const password = document.getElementById('wifi-password').value;
+                    const encryption = document.getElementById('wifi-type').value;
+                    const hidden = document.getElementById('wifi-hidden').value;
+                    
+                    if (!ssid) {
+                        alert('Please enter a network name (SSID)');
+                        return;
+                    }
+                    
+                    // Format: WIFI:T:WPA;S:MyNetwork;P:MyPassword;H:true;
+                    qrData = 'WIFI:';
+                    qrData += 'T:' + encryption + ';';
+                    qrData += 'S:' + ssid + ';';
+                    if (password) qrData += 'P:' + password + ';';
+                    qrData += 'H:' + hidden + ';';
+                    qrData += ';'; // End of data
+                    break;
+                case 'event':
+                    const eventTitle = document.getElementById('event-title').value;
+                    const eventDescription = document.getElementById('event-description').value;
+                    const eventLocation = document.getElementById('event-location').value;
+                    const eventStart = document.getElementById('event-start').value;
+                    const eventEnd = document.getElementById('event-end').value;
+                    
+                    if (!eventTitle || !eventStart) {
+                        alert('Please enter at least an event title and start time');
+                        return;
+                    }
+                    
+                    // Format dates properly for iCalendar
+                    const formatDateForICS = (dateString) => {
+                        if (!dateString) return '';
+                        const date = new Date(dateString);
+                        return date.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+                    };
+                    
+                    const startFormatted = formatDateForICS(eventStart);
+                    const endFormatted = eventEnd ? formatDateForICS(eventEnd) : formatDateForICS(new Date(new Date(eventStart).getTime() + 3600000).toString());
+                    
+                    // Create iCalendar format
+                    qrData = 'BEGIN:VEVENT\n';
+                    qrData += 'SUMMARY:' + eventTitle + '\n';
+                    if (eventDescription) qrData += 'DESCRIPTION:' + eventDescription.replace(/\n/g, '\\n') + '\n';
+                    if (eventLocation) qrData += 'LOCATION:' + eventLocation + '\n';
+                    qrData += 'DTSTART:' + startFormatted + '\n';
+                    qrData += 'DTEND:' + endFormatted + '\n';
+                    qrData += 'END:VEVENT';
                     break;
                 case 'contact':
                     const name = document.getElementById('name-content').value;
@@ -573,12 +734,12 @@
                     
                     // Build vCard content with proper formatting
                     qrData = `BEGIN:VCARD
-VERSION:3.0
-N:${name}
-FN:${name}
-TEL;TYPE=CELL,VOICE:${personalPhone}
-EMAIL:${personalEmail}`;
-
+        VERSION:3.0
+        N:${name}
+        FN:${name}
+        TEL;TYPE=CELL,VOICE:${personalPhone}
+        EMAIL:${personalEmail}`;
+        
                     // Add optional personal address fields if provided
                     if (street || city || state || zip || country) {
                         qrData += `\nADR:;;${street};${city};${state};${zip};${country}`;
@@ -745,6 +906,28 @@ EMAIL:${personalEmail}`;
                 saveContactBtn.style.display = 'none';
                 openUrlBtn.style.display = 'block';
             } 
+                // Check if it's a WiFi configuration
+            else if (data.startsWith('WIFI:')) {
+                const wifiParams = parseWifiString(data);
+                scanOutput.innerHTML = `
+                    <p><strong>WiFi Network Detected:</strong></p>
+                    <p><strong>SSID:</strong> ${wifiParams.S || 'Unknown'}</p>
+                    <p><strong>Authentication:</strong> ${wifiParams.T || 'Unknown'}</p>
+                    <p><strong>Password:</strong> ${wifiParams.P ? '••••••••' : 'Not required'}</p>
+                    <p><strong>Hidden:</strong> ${wifiParams.H === 'true' ? 'Yes' : 'No'}</p>
+                `;
+                saveContactBtn.style.display = 'none';
+                openUrlBtn.style.display = 'none';
+            } 
+            // Check if it's an event
+            else if (data.startsWith('BEGIN:VEVENT')) {
+                scanOutput.innerHTML = `
+                    <p><strong>Event Detected:</strong></p>
+                    <div class="event-details">${extractEventInfo(data)}</div>
+                `;
+                saveContactBtn.style.display = 'block';
+                openUrlBtn.style.display = 'none';
+            }
             // Regular text
             else {
                 scanOutput.innerHTML = `
@@ -755,7 +938,73 @@ EMAIL:${personalEmail}`;
                 openUrlBtn.style.display = 'none';
             }
         }
+        // Function to parse WiFi configuration string
+        function parseWifiString(wifiString) {
+            const params = {};
+            // Remove WIFI: prefix and trailing semicolons
+            const cleanString = wifiString.replace('WIFI:', '').replace(/;+$/, '');
+            const parts = cleanString.split(';');
+            
+            parts.forEach(part => {
+                if (part.includes(':')) {
+                    const [key, value] = part.split(':');
+                    params[key] = value;
+                }
+            });
+            
+            return params;
+        }
         
+        // Function to extract event info from iCalendar format
+        function extractEventInfo(vevent) {
+            const lines = vevent.split('\n');
+            let eventInfo = '';
+            
+            for (const line of lines) {
+                if (line.startsWith('SUMMARY:')) {
+                    const summary = line.split(':')[1] || '';
+                    if (summary) eventInfo += `<p><strong>Event:</strong> ${summary}</p>`;
+                } else if (line.startsWith('DESCRIPTION:')) {
+                    const description = line.split(':')[1] || '';
+                    if (description) eventInfo += `<p><strong>Description:</strong> ${description.replace(/\\n/g, '\n')}</p>`;
+                } else if (line.startsWith('LOCATION:')) {
+                    const location = line.split(':')[1] || '';
+                    if (location) eventInfo += `<p><strong>Location:</strong> ${location}</p>`;
+                } else if (line.startsWith('DTSTART:')) {
+                    const start = line.split(':')[1] || '';
+                    if (start) {
+                        const formattedDate = formatIcsDate(start);
+                        eventInfo += `<p><strong>Starts:</strong> ${formattedDate}</p>`;
+                    }
+                } else if (line.startsWith('DTEND:')) {
+                    const end = line.split(':')[1] || '';
+                    if (end) {
+                        const formattedDate = formatIcsDate(end);
+                        eventInfo += `<p><strong>Ends:</strong> ${formattedDate}</p>`;
+                    }
+                }
+            }
+            
+            return eventInfo || '<p>No event information found</p>';
+        }
+        
+        // Function to format iCalendar date
+        function formatIcsDate(icsDate) {
+            try {
+                // iCalendar dates are in format: YYYYMMDDTHHMMSSZ
+                const year = icsDate.substring(0, 4);
+                const month = icsDate.substring(4, 6) - 1; // Months are 0-indexed
+                const day = icsDate.substring(6, 8);
+                const hour = icsDate.substring(9, 11);
+                const minute = icsDate.substring(11, 13);
+                const second = icsDate.substring(13, 15);
+                
+                const date = new Date(Date.UTC(year, month, day, hour, minute, second));
+                return date.toLocaleString();
+            } catch (e) {
+                return icsDate;
+            }
+        }
         // Function to extract contact info from vCard
         function extractContactInfo(vcard) {
             const lines = vcard.split('\n');
@@ -860,14 +1109,25 @@ EMAIL:${personalEmail}`;
         saveContactBtn.addEventListener('click', () => {
             if (lastScannedData.startsWith('BEGIN:VCARD')) {
                 saveContactFromVCard(lastScannedData);
+            } else if (lastScannedData.startsWith('BEGIN:VEVENT')) {
+                // Create an ICS file for the event
+                const blob = new Blob([lastScannedData], { type: 'text/calendar' });
+                const url = URL.createObjectURL(blob);
+                
+                // Create a download link
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = 'event.ics';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
             }
         });
-        
-        openUrlBtn.addEventListener('click', () => {
-            if (lastScannedData) {
-                window.open(lastScannedData, '_blank');
-            }
-        });
+                openUrlBtn.addEventListener('click', () => {
+                    if (lastScannedData) {
+                        window.open(lastScannedData, '_blank');
+                    }
+                });
     </script>
 </body>
 </html>
