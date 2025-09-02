@@ -220,6 +220,14 @@
             font-weight: normal;
         }
         
+        .camera-permission {
+            text-align: center;
+            padding: 20px;
+            background: #f9f9f9;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        
         @media (max-width: 600px) {
             .container {
                 border-radius: 10px;
@@ -367,9 +375,14 @@
         </div>
         
         <div class="tab-content" id="scanner">
+            <div class="camera-permission">
+                <h3>Camera Access Required</h3>
+                <p>Please allow camera access to use the QR scanner. Make sure you're using HTTPS.</p>
+            </div>
+            
             <div class="scanner-container">
                 <div id="scan-area">
-                    <video id="scan-video" width="100%" height="300"></video>
+                    <video id="scan-video" width="100%" height="300" playsinline></video>
                     <div class="scan-box"></div>
                 </div>
                 <button id="start-scan">Start Scanner</button>
@@ -402,12 +415,7 @@
                 // If switching to scanner, stop any active generator processes
                 if (tab.dataset.tab === 'scanner') {
                     if (stream) {
-                        stream.getTracks().forEach(track => track.stop());
-                        stream = null;
-                    }
-                    if (scanningInterval) {
-                        clearInterval(scanningInterval);
-                        scanningInterval = null;
+                        stopScanner();
                     }
                 }
             });
@@ -449,7 +457,7 @@
             }
         });
         
-        // QR Code Generation
+        // QR Code Generation - Fixed implementation
         const generateBtn = document.getElementById('generate-btn');
         const qrcodeDiv = document.getElementById('qrcode');
         const downloadBtn = document.getElementById('download-btn');
@@ -520,9 +528,13 @@ EMAIL;TYPE=PERSONAL:${personalEmail}`;
                 // Clear previous QR code
                 qrcodeDiv.innerHTML = '';
                 
-                // Generate new QR code
+                // Generate new QR code - Fixed implementation
                 try {
-                    QRCode.toCanvas(qrcodeDiv, qrData, {
+                    // Create a canvas element
+                    const canvas = document.createElement('canvas');
+                    
+                    // Generate QR code to the canvas
+                    QRCode.toCanvas(canvas, qrData, {
                         width: 200,
                         margin: 1,
                         color: {
@@ -533,6 +545,9 @@ EMAIL;TYPE=PERSONAL:${personalEmail}`;
                         if (error) {
                             console.error('QR Code generation error:', error);
                             alert('Error generating QR code: ' + error.message);
+                        } else {
+                            // Add the canvas to the DOM
+                            qrcodeDiv.appendChild(canvas);
                         }
                     });
                 } catch (error) {
@@ -556,7 +571,7 @@ EMAIL;TYPE=PERSONAL:${personalEmail}`;
             }
         });
         
-        // QR Code Scanning
+        // QR Code Scanning - Fixed implementation
         const startScanBtn = document.getElementById('start-scan');
         const stopScanBtn = document.getElementById('stop-scan');
         const scanVideo = document.getElementById('scan-video');
@@ -565,42 +580,8 @@ EMAIL;TYPE=PERSONAL:${personalEmail}`;
         let stream = null;
         let scanningInterval = null;
         
-        startScanBtn.addEventListener('click', async () => {
-            try {
-                stream = await navigator.mediaDevices.getUserMedia({ 
-                    video: { facingMode: "environment" } 
-                });
-                scanVideo.srcObject = stream;
-                startScanBtn.style.display = 'none';
-                stopScanBtn.style.display = 'block';
-                
-                // Start scanning for QR codes
-                scanningInterval = setInterval(() => {
-                    if (scanVideo.readyState === scanVideo.HAVE_ENOUGH_DATA) {
-                        const canvas = document.createElement('canvas');
-                        canvas.width = scanVideo.videoWidth;
-                        canvas.height = scanVideo.videoHeight;
-                        const context = canvas.getContext('2d');
-                        context.drawImage(scanVideo, 0, 0, canvas.width, canvas.height);
-                        
-                        const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
-                        const code = jsQR(imageData.data, imageData.width, imageData.height);
-                        
-                        if (code) {
-                            scanOutput.innerHTML = `
-                                <p><strong>QR Code Detected:</strong></p>
-                                <p>${code.data}</p>
-                            `;
-                        }
-                    }
-                }, 500);
-            } catch (err) {
-                console.error('Error accessing camera:', err);
-                alert('Unable to access camera. Please check permissions.');
-            }
-        });
-        
-        stopScanBtn.addEventListener('click', () => {
+        // Function to stop the scanner
+        function stopScanner() {
             if (stream) {
                 stream.getTracks().forEach(track => track.stop());
                 stream = null;
@@ -612,7 +593,62 @@ EMAIL;TYPE=PERSONAL:${personalEmail}`;
             startScanBtn.style.display = 'block';
             stopScanBtn.style.display = 'none';
             scanOutput.textContent = 'No QR code detected yet...';
-        });
+            scanVideo.srcObject = null;
+        }
+        
+        // Function to start the scanner
+        async function startScanner() {
+            try {
+                stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { facingMode: "environment" } 
+                });
+                scanVideo.srcObject = stream;
+                startScanBtn.style.display = 'none';
+                stopScanBtn.style.display = 'block';
+                
+                // Wait for video to load metadata
+                scanVideo.onloadedmetadata = () => {
+                    scanVideo.play();
+                    
+                    // Create a canvas for QR code detection
+                    const canvasElement = document.createElement('canvas');
+                    const canvasContext = canvasElement.getContext('2d');
+                    
+                    // Start scanning for QR codes
+                    scanningInterval = setInterval(() => {
+                        if (scanVideo.readyState === scanVideo.HAVE_ENOUGH_DATA) {
+                            // Set canvas dimensions to match video
+                            canvasElement.width = scanVideo.videoWidth;
+                            canvasElement.height = scanVideo.videoHeight;
+                            
+                            // Draw video frame to canvas
+                            canvasContext.drawImage(scanVideo, 0, 0, canvasElement.width, canvasElement.height);
+                            
+                            // Get image data from canvas
+                            const imageData = canvasContext.getImageData(0, 0, canvasElement.width, canvasElement.height);
+                            
+                            // Try to detect QR code
+                            const code = jsQR(imageData.data, imageData.width, imageData.height, {
+                                inversionAttempts: "dontInvert",
+                            });
+                            
+                            if (code) {
+                                scanOutput.innerHTML = `
+                                    <p><strong>QR Code Detected:</strong></p>
+                                    <p>${code.data}</p>
+                                `;
+                            }
+                        }
+                    }, 100); // Check every 100ms instead of 500ms to improve responsiveness
+                };
+            } catch (err) {
+                console.error('Error accessing camera:', err);
+                alert('Unable to access camera. Please check permissions and make sure you are using HTTPS.');
+            }
+        }
+        
+        startScanBtn.addEventListener('click', startScanner);
+        stopScanBtn.addEventListener('click', stopScanner);
     </script>
 </body>
 </html>
